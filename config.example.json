@@ -1,0 +1,16 @@
+{
+  "username": "octocat",
+  "accounts": {
+    "default": {
+      "tokenEnv": "GITHUB_TOKEN"
+    }
+  },
+  "repositories": [
+    {
+      "name": "octocat/example",
+      "account": "default"
+    }
+  ],
+  "maxItems": 8,
+  "recentRunsPerRepo": 3
+}

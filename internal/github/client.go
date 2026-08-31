@@ -1,0 +1,106 @@
+package github
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+)
+
+type Client struct {
+	token string
+	http  *http.Client
+}
+
+func New(token string, timeout time.Duration) *Client {
+	return &Client{token: token, http: &http.Client{Timeout: timeout}}
+}
+
+func (c *Client) get(ctx context.Context, endpoint string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2026-03-10")
+	req.Header.Set("User-Agent", "glance-github-status")
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var body struct {
+			Message string `json:"message"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&body)
+		if body.Message == "" {
+			body.Message = resp.Status
+		}
+		return fmt.Errorf("github %s: %s", resp.Status, body.Message)
+	}
+	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+type WorkflowRun struct {
+	ID           int64     `json:"id"`
+	Name         string    `json:"name"`
+	DisplayTitle string    `json:"display_title"`
+	Status       string    `json:"status"`
+	Conclusion   string    `json:"conclusion"`
+	HTMLURL      string    `json:"html_url"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	HeadBranch   string    `json:"head_branch"`
+}
+
+type workflowRunsResponse struct {
+	WorkflowRuns []WorkflowRun `json:"workflow_runs"`
+}
+
+func (c *Client) WorkflowRuns(ctx context.Context, repo string, perPage int) ([]WorkflowRun, error) {
+	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/actions/runs?per_page=%d", repo, perPage)
+	var out workflowRunsResponse
+	if err := c.get(ctx, endpoint, &out); err != nil {
+		return nil, err
+	}
+	return out.WorkflowRuns, nil
+}
+
+type SearchItem struct {
+	Number        int       `json:"number"`
+	Title         string    `json:"title"`
+	HTMLURL       string    `json:"html_url"`
+	State         string    `json:"state"`
+	RepositoryURL string    `json:"repository_url"`
+	PullRequest   *struct{} `json:"pull_request"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+type searchResponse struct {
+	TotalCount int          `json:"total_count"`
+	Items      []SearchItem `json:"items"`
+}
+
+func (c *Client) SearchIssues(ctx context.Context, query string, perPage int) ([]SearchItem, int, error) {
+	endpoint := "https://api.github.com/search/issues?q=" + url.QueryEscape(query) + fmt.Sprintf("&sort=updated&order=desc&per_page=%d", perPage)
+	var out searchResponse
+	if err := c.get(ctx, endpoint, &out); err != nil {
+		return nil, 0, err
+	}
+	return out.Items, out.TotalCount, nil
+}
+
+func RepoNameFromAPIURL(s string) string {
+	const p = "https://api.github.com/repos/"
+	if strings.HasPrefix(s, p) {
+		return strings.TrimPrefix(s, p)
+	}
+	return s
+}
