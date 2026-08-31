@@ -222,10 +222,11 @@ func (s *Server) Handler() http.Handler {
 		_ = json.NewEncoder(w).Encode(s.snapshot())
 	})
 	mux.HandleFunc("/widget", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Widget-Content-Type", "html")
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(renderWidget(s.snapshot())))
-	})
+    w.Header().Set("Widget-Title", "GitHub")
+    w.Header().Set("Widget-Content-Type", "html")
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    _, _ = w.Write([]byte(renderWidget(s.snapshot())))
+})
 	return mux
 }
 
@@ -234,7 +235,7 @@ func renderWidget(st Status) string {
 	attention := c["failedRuns"] + c["reviewRequests"] + c["assignedIssues"]
 	var b strings.Builder
 	b.WriteString(`<div class="flex flex-column gap-10">`)
-	b.WriteString(`<div class="flex justify-between"><strong>GitHub</strong><span class="color-positive">`)
+  b.WriteString(`<div class="flex justify-end"><span class="color-positive">`)
 	if attention == 0 {
 		b.WriteString("CLEAR")
 	} else {
