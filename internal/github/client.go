@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+type APIError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *APIError) Error() string { return fmt.Sprintf("github %d: %s", e.StatusCode, e.Message) }
+func IsNotFound(err error) bool {
+	e, ok := err.(*APIError)
+	return ok && e.StatusCode == http.StatusNotFound
+}
+
 type Client struct {
 	token string
 	http  *http.Client
@@ -43,7 +54,7 @@ func (c *Client) get(ctx context.Context, endpoint string, out any) error {
 		if body.Message == "" {
 			body.Message = resp.Status
 		}
-		return fmt.Errorf("github %s: %s", resp.Status, body.Message)
+		return &APIError{StatusCode: resp.StatusCode, Message: body.Message}
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }
@@ -59,7 +70,6 @@ type WorkflowRun struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 	HeadBranch   string    `json:"head_branch"`
 }
-
 type workflowRunsResponse struct {
 	WorkflowRuns []WorkflowRun `json:"workflow_runs"`
 }
@@ -82,7 +92,6 @@ type SearchItem struct {
 	PullRequest   *struct{} `json:"pull_request"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
-
 type searchResponse struct {
 	TotalCount int          `json:"total_count"`
 	Items      []SearchItem `json:"items"`
@@ -95,6 +104,77 @@ func (c *Client) SearchIssues(ctx context.Context, query string, perPage int) ([
 		return nil, 0, err
 	}
 	return out.Items, out.TotalCount, nil
+}
+
+// DependabotAlert is the subset of GitHub's Dependabot alert schema used by the widget.
+type DependabotAlert struct {
+	Number     int       `json:"number"`
+	State      string    `json:"state"`
+	HTMLURL    string    `json:"html_url"`
+	CreatedAt  time.Time `json:"created_at"`
+	Dependency struct {
+		Package struct {
+			Name      string `json:"name"`
+			Ecosystem string `json:"ecosystem"`
+		} `json:"package"`
+		ManifestPath string `json:"manifest_path"`
+	} `json:"dependency"`
+	SecurityAdvisory struct {
+		GHSAID   string `json:"ghsa_id"`
+		CVEID    string `json:"cve_id"`
+		Summary  string `json:"summary"`
+		Severity string `json:"severity"`
+	} `json:"security_advisory"`
+}
+
+func (c *Client) DependabotAlerts(ctx context.Context, repo string) ([]DependabotAlert, error) {
+	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/dependabot/alerts?state=open&per_page=100", repo)
+	var out []DependabotAlert
+	if err := c.get(ctx, endpoint, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+type CodeScanningAlert struct {
+	Number    int       `json:"number"`
+	State     string    `json:"state"`
+	HTMLURL   string    `json:"html_url"`
+	CreatedAt time.Time `json:"created_at"`
+	Rule      struct {
+		ID                    string `json:"id"`
+		Name                  string `json:"name"`
+		Description           string `json:"description"`
+		SecuritySeverityLevel string `json:"security_severity_level"`
+		Severity              string `json:"severity"`
+	} `json:"rule"`
+}
+
+func (c *Client) CodeScanningAlerts(ctx context.Context, repo string) ([]CodeScanningAlert, error) {
+	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/code-scanning/alerts?state=open&per_page=100", repo)
+	var out []CodeScanningAlert
+	if err := c.get(ctx, endpoint, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+type SecretScanningAlert struct {
+	Number                int       `json:"number"`
+	State                 string    `json:"state"`
+	HTMLURL               string    `json:"html_url"`
+	SecretType            string    `json:"secret_type"`
+	SecretTypeDisplayName string    `json:"secret_type_display_name"`
+	CreatedAt             time.Time `json:"created_at"`
+}
+
+func (c *Client) SecretScanningAlerts(ctx context.Context, repo string) ([]SecretScanningAlert, error) {
+	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/secret-scanning/alerts?state=open&per_page=100", repo)
+	var out []SecretScanningAlert
+	if err := c.get(ctx, endpoint, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func RepoNameFromAPIURL(s string) string {

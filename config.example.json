@@ -12,5 +12,11 @@
     }
   ],
   "maxItems": 8,
-  "recentRunsPerRepo": 3
+  "recentRunsPerRepo": 3,
+  "security": {
+    "dependabot": true,
+    "codeScanning": true,
+    "secretScanning": true,
+    "minimumSeverity": "medium"
+  }
 }
