@@ -47,10 +47,15 @@ func main() {
 		clients[name] = gh.New(token, timeout)
 	}
 	s := srv.New(cfg, clients)
-	if err := s.Refresh(context.Background()); err != nil {
-		log.Printf("initial refresh partial/failed: %v", err)
-	}
+
+	// Start serving immediately so Glance is never blocked by a slow initial
+	// GitHub refresh. The first refresh and all subsequent refreshes run in
+	// the background.
 	go func() {
+		if err := s.Refresh(context.Background()); err != nil {
+			log.Printf("initial refresh partial/failed: %v", err)
+		}
+
 		t := time.NewTicker(refresh)
 		defer t.Stop()
 		for range t.C {
@@ -59,6 +64,7 @@ func main() {
 			}
 		}
 	}()
+
 	fmt.Printf("github-status %s listening on %s\n", version, listen)
 	log.Fatal(http.ListenAndServe(listen, s.Handler()))
 }

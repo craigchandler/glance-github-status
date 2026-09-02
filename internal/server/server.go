@@ -194,7 +194,9 @@ func (s *Server) collectSecurity(ctx context.Context, client *gh.Client, repo st
 	if cfg.Dependabot {
 		alerts, err := client.DependabotAlerts(ctx, repo)
 		if err != nil {
-			*errors = append(*errors, fmt.Sprintf("%s Dependabot: %v", repo, err))
+			if !gh.IsSecurityFeatureUnavailable(err) {
+				*errors = append(*errors, fmt.Sprintf("%s Dependabot: %v", repo, err))
+			}
 		} else {
 			for _, a := range alerts {
 				sev := normalizeSeverity(a.SecurityAdvisory.Severity)
@@ -216,7 +218,9 @@ func (s *Server) collectSecurity(ctx context.Context, client *gh.Client, repo st
 	if cfg.CodeScanning {
 		alerts, err := client.CodeScanningAlerts(ctx, repo)
 		if err != nil {
-			*errors = append(*errors, fmt.Sprintf("%s code scanning: %v", repo, err))
+			if !gh.IsSecurityFeatureUnavailable(err) {
+				*errors = append(*errors, fmt.Sprintf("%s code scanning: %v", repo, err))
+			}
 		} else {
 			for _, a := range alerts {
 				sev := normalizeSeverity(a.Rule.SecuritySeverityLevel)
@@ -240,7 +244,9 @@ func (s *Server) collectSecurity(ctx context.Context, client *gh.Client, repo st
 	if cfg.SecretScanning {
 		alerts, err := client.SecretScanningAlerts(ctx, repo)
 		if err != nil {
-			*errors = append(*errors, fmt.Sprintf("%s secret scanning: %v", repo, err))
+			if !gh.IsSecurityFeatureUnavailable(err) {
+				*errors = append(*errors, fmt.Sprintf("%s secret scanning: %v", repo, err))
+			}
 		} else {
 			for _, a := range alerts {
 				sev := "critical"

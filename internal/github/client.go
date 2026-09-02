@@ -21,6 +21,30 @@ func IsNotFound(err error) bool {
 	return ok && e.StatusCode == http.StatusNotFound
 }
 
+// IsSecurityFeatureUnavailable returns true when GitHub is telling us that a
+// repository security feature is not enabled or not available for the repo.
+// These are expected per-repository conditions, not monitoring failures.
+// Permission failures such as "Resource not accessible by personal access token"
+// deliberately return false so they remain visible to the operator.
+func IsSecurityFeatureUnavailable(err error) bool {
+	e, ok := err.(*APIError)
+	if !ok {
+		return false
+	}
+	if e.StatusCode == http.StatusNotFound {
+		return true
+	}
+	if e.StatusCode != http.StatusForbidden {
+		return false
+	}
+	m := strings.ToLower(e.Message)
+	return strings.Contains(m, "alerts are disabled for this repository") ||
+		strings.Contains(m, "advanced security must be enabled") ||
+		strings.Contains(m, "secret scanning is disabled") ||
+		strings.Contains(m, "secret scanning is not enabled") ||
+		strings.Contains(m, "code scanning is not enabled")
+}
+
 type Client struct {
 	token string
 	http  *http.Client
