@@ -430,13 +430,13 @@ func renderWidget(st Status) string {
 			if x.Severity == "critical" {
 				cls = "color-negative"
 			}
-			b.WriteString(`<div class="flex justify-between gap-10"><a class="text-truncate" href="` + html.EscapeString(x.URL) + `">` + html.EscapeString(shortRepo(x.Repo)) + ` · ` + html.EscapeString(x.Title) + `</a><span class="` + cls + `">` + html.EscapeString(strings.ToUpper(x.Severity)) + `</span></div>`)
+			b.WriteString(`<div class="flex justify-between gap-10"><a class="text-truncate" href="` + html.EscapeString(x.URL) + `" target="_blank" rel="noopener noreferrer">` + html.EscapeString(shortRepo(x.Repo)) + ` · ` + html.EscapeString(x.Title) + `</a><span class="` + cls + `">` + html.EscapeString(strings.ToUpper(x.Severity)) + `</span></div>`)
 		}
 	}
 	if len(st.FailedRuns) > 0 {
 		b.WriteString(`<div class="margin-top-10"><strong>Failed runs</strong></div>`)
 		for _, r := range st.FailedRuns {
-			b.WriteString(`<div class="flex justify-between gap-10"><a class="text-truncate" href="` + html.EscapeString(r.URL) + `">` + html.EscapeString(shortRepo(r.Repo)) + ` · ` + html.EscapeString(r.Name) + `</a><span>` + html.EscapeString(r.Conclusion) + `</span></div>`)
+			b.WriteString(`<div class="flex justify-between gap-10"><a class="text-truncate" href="` + html.EscapeString(r.URL) + `" target="_blank" rel="noopener noreferrer">` + html.EscapeString(shortRepo(r.Repo)) + ` · ` + html.EscapeString(r.Name) + `</a><span>` + html.EscapeString(r.Conclusion) + `</span></div>`)
 		}
 	}
 	if len(st.ReviewRequests) > 0 {
@@ -456,7 +456,7 @@ func renderWidget(st Status) string {
 					mark = "✗"
 				}
 			}
-			b.WriteString(`<div class="flex justify-between gap-10"><a class="text-truncate" href="` + html.EscapeString(r.URL) + `">` + html.EscapeString(shortRepo(r.Repo)) + ` · ` + html.EscapeString(r.Name) + `</a><span>` + mark + `</span></div>`)
+			b.WriteString(`<div class="flex justify-between gap-10"><a class="text-truncate" href="` + html.EscapeString(r.URL) + `" target="_blank" rel="noopener noreferrer">` + html.EscapeString(shortRepo(r.Repo)) + ` · ` + html.EscapeString(r.Name) + `</a><span>` + mark + `</span></div>`)
 		}
 	}
 	if st.Error != "" {
@@ -466,7 +466,7 @@ func renderWidget(st Status) string {
 	return b.String()
 }
 func itemHTML(x Item) string {
-	return `<div class="text-truncate"><a href="` + html.EscapeString(x.URL) + `">` + html.EscapeString(shortRepo(x.Repo)) + ` #` + fmt.Sprint(x.Number) + ` · ` + html.EscapeString(x.Title) + `</a></div>`
+	return `<div class="text-truncate"><a href="` + html.EscapeString(x.URL) + `" target="_blank" rel="noopener noreferrer">` + html.EscapeString(shortRepo(x.Repo)) + ` #` + fmt.Sprint(x.Number) + ` · ` + html.EscapeString(x.Title) + `</a></div>`
 }
 func shortRepo(r string) string {
 	if i := strings.IndexByte(r, '/'); i >= 0 {

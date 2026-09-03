@@ -1,6 +1,7 @@
 package server
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -61,5 +62,23 @@ func TestCurrentFailedRunsKeepsIndependentFailures(t *testing.T) {
 	}
 	if got[0].Name != "Lint" || got[0].Conclusion != "cancelled" || got[1].URL != "https://example.test/release-failed" {
 		t.Fatalf("currentFailedRuns() = %#v, want current Lint and release failures", got)
+	}
+}
+
+func TestRenderWidgetOpensGitHubLinksOutsideEmbeddedFrame(t *testing.T) {
+	st := Status{
+		Counts:         map[string]int{},
+		SecurityAlerts: []SecurityItem{{Repo: "owner/security", Title: "Alert", URL: "https://github.com/owner/security/security/1"}},
+		FailedRuns:     []RepoRun{{Repo: "owner/failed", Name: "Build", URL: "https://github.com/owner/failed/actions/1"}},
+		ReviewRequests: []Item{{Repo: "owner/review", Title: "Review", URL: "https://github.com/owner/review/pull/1", Number: 1}},
+		RecentRuns:     []RepoRun{{Repo: "owner/recent", Name: "Test", URL: "https://github.com/owner/recent/actions/1"}},
+	}
+
+	got := renderWidget(st)
+	if links := strings.Count(got, `<a `); links != 4 {
+		t.Fatalf("renderWidget() rendered %d links, want 4: %s", links, got)
+	}
+	if externalLinks := strings.Count(got, `target="_blank" rel="noopener noreferrer"`); externalLinks != 4 {
+		t.Fatalf("renderWidget() rendered %d external links, want 4: %s", externalLinks, got)
 	}
 }
