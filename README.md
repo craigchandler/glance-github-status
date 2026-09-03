@@ -389,7 +389,7 @@ Maximum number of entries retained for each displayed list. Default: `8`.
 
 ### `recentRunsPerRepo`
 
-Number of workflow runs requested from each configured repository before the combined recent-run list is sorted and limited. Default: `3`.
+Number of workflow runs requested from each configured repository before the combined recent-run list is sorted and limited. Default: `3`. Failed Actions shows only the newest run for each workflow and branch in this window, so a later successful follow-up clears its earlier failure. Increase this value if active workflows can be separated by more than a few runs.
 
 ## Environment reference
 

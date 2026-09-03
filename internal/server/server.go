@@ -137,10 +137,8 @@ func (s *Server) Refresh(ctx context.Context) error {
 			for _, r := range runs {
 				rr := RepoRun{Repo: repo.Name, Name: r.Name, Status: r.Status, Conclusion: r.Conclusion, URL: r.HTMLURL, UpdatedAt: r.UpdatedAt}
 				st.RecentRuns = append(st.RecentRuns, rr)
-				if r.Status == "completed" && r.Conclusion != "success" && r.Conclusion != "skipped" && r.Conclusion != "neutral" {
-					st.FailedRuns = append(st.FailedRuns, rr)
-				}
 			}
+			st.FailedRuns = append(st.FailedRuns, currentFailedRuns(repo.Name, runs)...)
 		}
 		if s.cfg.Security != nil {
 			s.collectSecurity(ctx, client, repo.Name, &st, &errors)
@@ -350,6 +348,31 @@ func searchLabel(q string) string {
 func sortRuns(in []RepoRun) {
 	sort.Slice(in, func(i, j int) bool { return in[i].UpdatedAt.After(in[j].UpdatedAt) })
 }
+
+// currentFailedRuns returns failed runs whose workflow is still in a failed
+// state on its branch. A later run of the same workflow on the same branch
+// supersedes an earlier failure, while failures on other branches remain visible.
+func currentFailedRuns(repo string, runs []gh.WorkflowRun) []RepoRun {
+	latest := make(map[string]gh.WorkflowRun)
+	for _, run := range runs {
+		key := run.Name + "\x00" + run.HeadBranch
+		previous, ok := latest[key]
+		if !ok || run.UpdatedAt.After(previous.UpdatedAt) {
+			latest[key] = run
+		}
+	}
+
+	failed := make([]RepoRun, 0, len(latest))
+	for _, run := range latest {
+		if run.Status != "completed" || run.Conclusion == "success" || run.Conclusion == "skipped" || run.Conclusion == "neutral" {
+			continue
+		}
+		failed = append(failed, RepoRun{Repo: repo, Name: run.Name, Status: run.Status, Conclusion: run.Conclusion, URL: run.HTMLURL, UpdatedAt: run.UpdatedAt})
+	}
+	sortRuns(failed)
+	return failed
+}
+
 func limitRuns(in []RepoRun, max int) []RepoRun {
 	if len(in) > max {
 		return in[:max]
