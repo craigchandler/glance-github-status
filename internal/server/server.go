@@ -67,7 +67,7 @@ type Status struct {
 	ReviewRequests []Item          `json:"reviewRequests"`
 	OpenPRs        []Item          `json:"openPRs"`
 	AssignedIssues []Item          `json:"assignedIssues"`
-	SecurityAlerts []SecurityItem  `json:"securityAlerts,omitempty"`
+	SecurityAlerts []SecurityItem  `json:"securityAlerts"`
 	Attention      []AttentionItem `json:"attention,omitempty"`
 	Counts         map[string]int  `json:"counts"`
 	RefreshedAt    time.Time       `json:"refreshedAt"`
@@ -386,7 +386,16 @@ func mapItems(in []gh.SearchItem) []Item {
 	}
 	return out
 }
-func (s *Server) snapshot() Status { s.mu.RLock(); defer s.mu.RUnlock(); return s.status }
+func (s *Server) snapshot() Status {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	st := s.status
+	// Homepage dynamic lists require an array, including when no alerts exist.
+	if st.SecurityAlerts == nil {
+		st.SecurityAlerts = []SecurityItem{}
+	}
+	return st
+}
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
